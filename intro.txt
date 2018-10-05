@@ -95,5 +95,74 @@ pytorch/caffe2/core/common_gpu.h
   for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x
 /////////////////////////////////////////////////////////////////////       
-       
-       
+
+vector<OperatorDef> GetGradientDefs() override {
+  return SingleGradientDef(
+      "BatchPermutationGradient",
+      "",
+      vector<string>{I(1), GO(0)},
+      vector<string>{GI(0)});
+        
+bool BatchPermutationGradientOp<float, CUDAContext>::RunOnDevice() {
+  auto& indices = Input(0);
+  auto& dY = Input(1);
+  auto* dX = Output(0);
+  dX->ResizeLike(dY);
+}
+/////////////////////////////////////////////////////////////////////
+[ batch_permutation_op.cc ]
+------------------------------------FORWARD---------------------------------------
+REGISTER_CPU_OPERATOR(BatchPermutation, BatchPermutationOp<float, CPUContext>);
+OPERATOR_SCHEMA(BatchPermutation)
+    .NumInputs(2)
+    .NumOutputs(1)
+    .SetDoc(R"DOC(....)  
+template <>
+bool BatchPermutationOp<float, CPUContext>::RunOnDevice() {
+  const auto& X = Input(0);
+  const auto& indices = Input(1);
+  auto* Y = Output(0);
+------------------------------------BACKWARD---------------------------------------
+REGISTER_CPU_OPERATOR(BatchPermutationGradient, BatchPermutationGradientOp<float, CPUContext>);
+OPERATOR_SCHEMA(BatchPermutationGradient)
+    .NumInputs(2)
+    .NumOutputs(1)
+    .Input(
+        0,
+        "indices",
+        "See BatchPermutation.")
+    .Input(
+        1,
+        "dY",
+        "Gradient of forward output 0 (Y).")
+    .Output(
+        0,
+        "dX",
+        "Gradient of forward input 0 (X).");
+
+REGISTER_GRADIENT(BatchPermutation, GetBatchPermutationGradient);
+/////////////////////////////////////////////////////////////////////
+[batch_permutation_op.cu]
+
+bool BatchPermutationOp<float, CUDAContext>::RunOnDevice() {
+  auto& X = Input(0);
+  auto& indices = Input(1);
+  auto* Y = Output(0);
+  ...
+  
+  template <>
+bool BatchPermutationGradientOp<float, CUDAContext>::RunOnDevice() {
+  auto& indices = Input(0);
+  auto& dY = Input(1);
+  auto* dX = Output(0);
+  ....
+
+REGISTER_CUDA_OPERATOR(
+    BatchPermutation,
+    BatchPermutationOp<float, CUDAContext>);
+REGISTER_CUDA_OPERATOR(
+    BatchPermutationGradient,
+    BatchPermutationGradientOp<float, CUDAContext>);
+/////////////////////////////////////////////////////////////////////    
+[batch_permutation_op.h]
+/////////////////////////////////////////////////////////////////////
