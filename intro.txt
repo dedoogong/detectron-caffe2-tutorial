@@ -1,8 +1,8 @@
-
+/////////////////////////////////////////////////////////////////////
 /*  A struct that abstracts on top of dense and sparse blobs.
  *
- * For a dense blob, its gradient name should be written into dense_, and for
- * a sparse blob, its gradient name should be written into indice_ for
+ * For a dense blob, its gradient name should be written into dense_,
+ * and for a sparse blob, its gradient name should be written into indice_ for
  * the sparse indices and value_ for the values.
  */ 
  
@@ -80,8 +80,7 @@
   const GradientWrapper& GradOut(int i) {
     return g_output_.at(i);
   }
-  
-  
+   
     /**
    * @brief a helper function to allow one to create one single operator
    * def, which is usually the case for many simple operators.
@@ -90,3 +89,11 @@
   inline static vector<OperatorDef> SingleGradientDef(const Args&... args) {
     return vector<OperatorDef>{CreateOperatorDef(args...)};
   }
+/////////////////////////////////////////////////////////////////////
+pytorch/caffe2/core/common_gpu.h
+#define CUDA_1D_KERNEL_LOOP(i, n)                                 \
+  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
+       i += blockDim.x * gridDim.x
+/////////////////////////////////////////////////////////////////////       
+       
+       
