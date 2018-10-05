@@ -271,11 +271,32 @@ Y:
 ``` 
 
 [fully_connected_op.h]
+  template <
+      typename T_X,
+      typename T_W,
+      typename T_B,
+      typename T_Y,
+      typename MATH>
+ bool DoRunWithType() {
+ ...      
+      
   bool DoRunWithType() {
     const auto& X = Input(0);//I(0)
     const auto& W = Input(1);//I(1)
     const auto& b = Input(2);//I(2)
     auto* Y = Output(0);     //O(0)
+    
+[fully_connected_op_gpu.cc]
+template <class FullyConnectedOp>
+bool RunFullyConnectedOpOnCUDADevice(
+    const bool float16_compute,
+    FullyConnectedOp* op) {
+  if (op->Input(0).template IsType<float>()) {
+    return op->template DoRunWithType<
+        float, // X
+        float, // W
+        float, // B
+        float, // Y
 -------------------------------------BACKWARD--------------------------------------
 [caffe2/operators/fully_connected_op.cc]
 REGISTER_CPU_OPERATOR(FCGradient, FullyConnectedGradientOp<CPUContext>);
@@ -288,7 +309,7 @@ OPERATOR_SCHEMA(FCGradient)
         std::bind(CostInferenceForFCGradient, _1, _2, false));
 OPERATOR_SCHEMA(FCTransposedGradient)
     .NumInputs(3)
-    .NumOutputs(2, 3)
+    .NumOutputs(2, 3) // not 2 by 3, but 2 or 3!
     .TensorInferenceFunction(std::bind(FCGradientShapeInference, _1, _2, false))
     .CostInferenceFunction(
         std::bind(CostInferenceForFCGradient, _1, _2, false));
@@ -299,7 +320,7 @@ std::vector<OperatorDef> GetGradientDefs() override {
   return SingleGradientDef(
       def_.type() + "Gradient",
       "",
-      vector<string>{I(0), I(1), GO(0)}, // X,W,dW
+      vector<string>{I(0), I(1), GO(0)}, // X,W,dY
       vector<string>{GI(1), GI(2), GI(0)}); // W,dY,db
 } 
 
@@ -310,6 +331,16 @@ REGISTER_GRADIENT(FCTransposed, GetFCGradient);
 class FullyConnectedGradientOp : public Operator<Context> {
 ...
 ...
+
+  template <
+      typename T_X,
+      typename T_W,
+      typename T_DY,
+      typename T_B,
+      typename T_DX,
+      typename T_DW,
+      typename T_DB,
+      typename MATH> 
   bool DoRunWithType() {
     const auto& X = Input(0); //GI(0)
     const auto& W = Input(1); //GI(1)
@@ -317,6 +348,37 @@ class FullyConnectedGradientOp : public Operator<Context> {
 ...
 ...
     auto* dW = Output(0);//GO(0)
-    auto* db = Output(1);//GO(1)
+    auto* dB = Output(1);//GO(1)
     ...
     auto* dX = Output(2);//GO(2)
+
+  // CPU RUNNABLE
+  bool RunOnDevice() override {
+    return DoRunWithType<
+        float, //  X
+        float, //  W
+        float, // dY
+        float, //  B
+        float, // dX
+        float, // dW
+        float, // dB
+        float>(); // Math
+  } 
+  
+[fully_connected_op_gpu.cc] 
+
+// GPU RUNNABLE        
+template <class FullyConnectedGradientOp>
+bool RunFullyConnectedGradientOpOnCUDADevice(
+    const bool float16_compute,
+    FullyConnectedGradientOp* op) {
+  if (op->Input(0).template IsType<float>()) {
+    return op->template DoRunWithType<
+        float, //  X
+        float, //  W
+        float, // dY
+        float, //  B
+        float, // dX
+        float, // dW
+        float, // dB
+        float>(); // Math
