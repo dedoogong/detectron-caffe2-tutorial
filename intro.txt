@@ -180,14 +180,9 @@ REGISTER_CUDA_OPERATOR(
 /////////////////////////////////////////////////////////////////////    
 [batch_permutation_op.h]
 /////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////
+-------------------------------------FORWARD--------------------------------------
 [caffe2/operators/fully_connected_op.cc]
-
-
 REGISTER_CPU_OPERATOR(FC, FullyConnectedOp<CPUContext>);
-REGISTER_CPU_OPERATOR(FCGradient, FullyConnectedGradientOp<CPUContext>);
 
 REGISTER_CPU_OPERATOR(
     FCTransposed,
@@ -218,16 +213,14 @@ OPERATOR_SCHEMA(FC)
         "Y",
         "Ouput blob containing a 2D output matrix of shape $(M,N)$, where $M$ is the batch size and $N$ is the number of nodes in the layer. The ouput is calculated as $Y=XW^T+b$.")
     .InheritOnnxSchema("Gemm");
-    
-    
-    
+      
  .SetDoc(R"DOC(
 The FC operator computes an output $(Y)$ as a linear combination of the input data blob $(X)$ with a weight blob $(W)$ and bias blob $(b)$. More formally,
 
 $$Y = XW^T+b$$
 Here, $X$ is a matrix of shape $(M,K)$, $W$ is a matrix of shape $(N,K)$, $b$ is a vector of length $N$, and $Y$ is a matrix of shape $(M,N)$. $N$ can be thought of as the number of nodes in the layer, $M$ is the batch size, and $K$ is the number of features in an input observation.
 *NOTE: $X$ does not need to explicitly be a 2-dimensional matrix, however, if it is not it will be coerced into one. For an arbitrary $n$-dimensional tensor $X$, e.g. $[a_0, a_1, \ldots ,a_{k-1}, a_k, \ldots , a_{n-1}]$, where $a_i$ in $N$, and $k$ is the $axis$ arg provided, then $X$ will be coerced into a 2-dimensional tensor with dimensions $[a_0 * \ldots * a_{k-1}, a_k * \ldots * a_{n-1}]$. For the default case where axis=1, this means the $X$ tensor will be coerced into a 2D tensor of dimensions $[a_0, a_1 * \ldots * a_{n-1}]$, where $a_0$ is often the batch size. In this situation, we must have $a_0 = M$ and $a_1 * \ldots * a_{n-1} = K$. Lastly, even though $b$ is a vector of length $N$, it is copied and resized to shape $(M x N)$ implicitly, then added to each vector in the batch.*
-
+ 
 REGISTER_CPU_OPERATOR(
     FCTransposedGradient,
     FullyConnectedGradientOp<
@@ -275,8 +268,17 @@ print("Y:\n", workspace.FetchBlob("Y"))
 ```
 Y:
  [[7.]]
-```
+``` 
 
+[fully_connected_op.h]
+  bool DoRunWithType() {
+    const auto& X = Input(0);//I(0)
+    const auto& W = Input(1);//I(1)
+    const auto& b = Input(2);//I(2)
+    auto* Y = Output(0);     //O(0)
+-------------------------------------BACKWARD--------------------------------------
+[caffe2/operators/fully_connected_op.cc]
+REGISTER_CPU_OPERATOR(FCGradient, FullyConnectedGradientOp<CPUContext>);
 
 OPERATOR_SCHEMA(FCGradient)
     .NumInputs(3)
@@ -297,19 +299,14 @@ std::vector<OperatorDef> GetGradientDefs() override {
   return SingleGradientDef(
       def_.type() + "Gradient",
       "",
-      vector<string>{I(0), I(1), GO(0)},
-      vector<string>{GI(1), GI(2), GI(0)});
-}
-
+      vector<string>{I(0), I(1), GO(0)}, // X,W,dW
+      vector<string>{GI(1), GI(2), GI(0)}); // W,dY,db
+} 
 
 REGISTER_GRADIENT(FC, GetFCGradient);
-REGISTER_GRADIENT(FCTransposed, GetFCGradient);
-
-
-const auto& X = Input(0);
-const auto& W = Input(1);
-const auto& b = Input(2);
-
+REGISTER_GRADIENT(FCTransposed, GetFCGradient); 
+ 
+[fully_connected_op.h]
 class FullyConnectedGradientOp : public Operator<Context> {
 ...
 ...
