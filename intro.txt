@@ -1,3 +1,5 @@
+/app/src/main/cpp/caffe2/core/operator_gradient.h
+
 /////////////////////////////////////////////////////////////////////
 /*  A struct that abstracts on top of dense and sparse blobs.
  *
@@ -5,8 +7,6 @@
  * and for a sparse blob, its gradient name should be written into indice_ for
  * the sparse indices and value_ for the values.
  */ 
- 
- /src/main/cpp/caffe2/core/operator_gradient.h
  class GradientMakerBase{...}
   
   // Helper functions to return names for the gradient computation.
