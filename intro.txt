@@ -297,6 +297,38 @@ bool RunFullyConnectedOpOnCUDADevice(
         float, // W
         float, // B
         float, // Y
+        
+template <>
+bool FullyConnectedOp<CUDAContext>::RunOnDevice() {
+  return RunFullyConnectedOpOnCUDADevice(float16_compute_, this);
+}
+
+template <>
+bool FullyConnectedOp<
+    CUDAContext,
+    DefaultEngine,
+    false /* don't transpose weight */>::RunOnDevice() {
+  return RunFullyConnectedOpOnCUDADevice(float16_compute_, this);
+}
+
+#if CUDA_VERSION >= 9000
+
+// Require these to be defined otherwise TensorCore FC ops will end
+// up calling the default FC implementation which doesn't have
+// fp16 support...
+
+template <>
+bool FullyConnectedOp<CUDAContext, TensorCoreEngine>::RunOnDevice() {
+  return RunFullyConnectedOpOnCUDADevice(false /* float16_compute */, this);
+}
+
+template <>
+bool FullyConnectedOp<
+    CUDAContext,
+    TensorCoreEngine,
+    false /* don't transpose weight */>::RunOnDevice() {
+  return RunFullyConnectedOpOnCUDADevice(false /* float16_compute */, this);
+}
 -------------------------------------BACKWARD--------------------------------------
 [caffe2/operators/fully_connected_op.cc]
 REGISTER_CPU_OPERATOR(FCGradient, FullyConnectedGradientOp<CPUContext>);
@@ -364,7 +396,8 @@ class FullyConnectedGradientOp : public Operator<Context> {
         float, // dB
         float>(); // Math
   } 
-  
+
+
 [fully_connected_op_gpu.cc] 
 
 // GPU RUNNABLE        
@@ -382,3 +415,35 @@ bool RunFullyConnectedGradientOpOnCUDADevice(
         float, // dW
         float, // dB
         float>(); // Math
+
+template <>
+bool FullyConnectedGradientOp<CUDAContext>::RunOnDevice() {
+  return RunFullyConnectedGradientOpOnCUDADevice(float16_compute_, this);
+}
+
+template <>
+bool FullyConnectedGradientOp<
+    CUDAContext,
+    DefaultEngine,
+    false /* don't transpose weight */>::RunOnDevice() {
+  return RunFullyConnectedGradientOpOnCUDADevice(float16_compute_, this);
+}
+
+#if CUDA_VERSION >= 9000
+
+
+template <>
+bool FullyConnectedGradientOp<CUDAContext, TensorCoreEngine>::RunOnDevice() {
+  return RunFullyConnectedGradientOpOnCUDADevice(
+      false /* float16_compute */, this);
+}
+
+template <>
+bool FullyConnectedGradientOp<
+    CUDAContext,
+    TensorCoreEngine,
+    false /* don't transpose weight */>::RunOnDevice() {
+  return RunFullyConnectedGradientOpOnCUDADevice(
+      false /* float16_compute */, this);
+}
+
