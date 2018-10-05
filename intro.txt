@@ -88,5 +88,5 @@
    */
   template <class... Args>
   inline static vector<OperatorDef> SingleGradientDef(const Args&... args) {
-#    return vector<OperatorDef>{CreateOperatorDef(args...)};
+    return vector<OperatorDef>{CreateOperatorDef(args...)};
   }
