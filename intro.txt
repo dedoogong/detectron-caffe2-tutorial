@@ -80,7 +80,7 @@
   const GradientWrapper& GradOut(int i) {
     return g_output_.at(i);
   }
-   
+/////////////////////////////////////////////////////////////////////   
     /**
    * @brief a helper function to allow one to create one single operator
    * def, which is usually the case for many simple operators.
